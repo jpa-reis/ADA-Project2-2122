@@ -1,6 +1,5 @@
 package awesome_warrior_game;
 
-import java.net.Inet4Address;
 import java.util.*;
 
 public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
@@ -10,17 +9,28 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
 
     private final int numChallenges;
     private final int numDecisions;
+
+    /*
+     * Variable that saves all the edges of the graph
+     * edge[x][0]: initial node of edge x
+     * edge[x][1]: final node of edge x
+     * edge[x][2]: weight of edge x
+     */
     private final int[][] edges;
 
+    // Contains the length of the path with maximum value to each node
     private final double[] length;
-    private final ArrayList<Integer> via;
+
+    // Arrays that are created during the algorithm. Used to find which nodes belong to a cycle
+    private final int[] via;
+
 
     public AwesomeWarriorGameClass(int challenges, int decisions){
         edges = new int[decisions][3];
         length = new double[challenges];
-        via = new ArrayList<>(challenges);
+        via = new int[challenges];
         for(int i = 0; i < challenges; i++){
-            via.add(i, -1);
+            via[i]=-1;
         }
         numChallenges = challenges;
         numDecisions = decisions;
@@ -51,7 +61,6 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
             }
         }
 
-
         if (changes && updateLengths()){
             if(getCycleNodes(endPoint)){
                 return FULL;
@@ -75,7 +84,7 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
                 double newLen = length[edges[i][0]] + edges[i][2];
                 if(newLen>length[edges[i][1]]){
                     length[edges[i][1]] = newLen;
-                    via.set(edges[i][0], edges[i][1]);
+                    via[edges[i][0]]= edges[i][1];
                     changes = true;
                 }
             }
@@ -84,9 +93,13 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
         return changes;
     }
 
+
+
+
     private boolean getCycleNodes(int endPoint){
         int[] inDegree = new int[numChallenges];
         boolean changes =true;
+        boolean[] checked = new boolean[numChallenges];
 
         for (Integer integer : via) {
             if (integer != -1) inDegree[integer]++;
@@ -95,34 +108,38 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
         //algorithm that isolates the cycle
         while(changes){
             changes = false;
-            for(int i = 0; i < numChallenges; i++){
-                if(inDegree[i] == 0 && via.get(i) != -1){
-                    int u = via.set(i, -1);
+            for(int i = 0; i < via.length; i++){
+                if(inDegree[i] == 0 && via[i] != -1){
+                    int u = via[i];
+                    via[i] = -1;
                     inDegree[u]--;
                     changes = true;
                 }
             }
-
         }
 
         //list with node identified as a cycle
         //preferably do this in the previous cycle and eliminate this for loop
-        List<Integer> aux = new ArrayList<>();
-        for(int i = 0; i < via.size(); i++){
-            if(via.get(i) > 0){
-                aux.add(i);
+        boolean[] checkedNode = new boolean[numChallenges];
+        Stack<Integer> nodesToCheck = new Stack();
+        for(int i = 0; i < via.length; i++){
+            if(via[i] >= 0){
+                checkedNode[i]=true;
+                nodesToCheck.push(i);
             }
         }
 
         //procura pelo grafo de x nós até chegar a um endpoint
         //create a seperate reachesNode() function
-        for(int i = 0; i < numDecisions; i++){
-            for(int u = 0; u< aux.size(); u++){
-                if(edges[i][0] == aux.get(u) && !aux.contains(edges[i][1])){
-                    aux.add(edges[i][1]);
-                }
-                if(aux.get(u) == endPoint){
-                    return true;
+        while(!nodesToCheck.empty()){
+            int node = nodesToCheck.pop();
+            if(node == endPoint){
+                return true;
+            }
+            for(int i = 0; i < numDecisions; i++){
+                if(edges[i][0] == node && !checkedNode[edges[i][1]]){
+                    nodesToCheck.push(edges[i][1]);
+                    checkedNode[edges[i][1]] = true;
                 }
             }
         }
