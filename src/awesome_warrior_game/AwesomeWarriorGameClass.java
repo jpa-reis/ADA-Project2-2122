@@ -1,5 +1,6 @@
 package awesome_warrior_game;
 
+import java.net.Inet4Address;
 import java.util.*;
 
 public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
@@ -7,21 +8,22 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
     private static final String FULL = "Full of energy";
     private static final String EMPTY = "0";
 
-    private int numChallenges;
-    private int numDecisions;
-    private int[][] edges;
+    private final int numChallenges;
+    private final int numDecisions;
+    private final int[][] edges;
 
-    private double[] length;
-    private double[] via;
-
+    private final double[] length;
+    private final ArrayList<Integer> via;
 
     public AwesomeWarriorGameClass(int challenges, int decisions){
         edges = new int[decisions][3];
         length = new double[challenges];
-        via = new double[challenges];
+        via = new ArrayList<>(challenges);
+        for(int i = 0; i < challenges; i++){
+            via.add(i, -1);
+        }
         numChallenges = challenges;
         numDecisions = decisions;
-
     }
 
     @Override
@@ -33,12 +35,12 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
 
     @Override
     public String solve(int startingPoint, int endPoint, int totalEnergy) {
+
+        //Initialize variables
         for(int i = 0; i < numChallenges; i++){
             length[i] = Double.NEGATIVE_INFINITY;
-            via[i] = -1;
         }
         length[startingPoint] = 0;
-        via[startingPoint] = startingPoint;
 
         boolean changes = false;
         for(int i = 1; i<numChallenges; i++){
@@ -49,9 +51,11 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
             }
         }
 
-        //Testing if there is a POSITIVE CYCLE - negative cycles are ignored
+
         if (changes && updateLengths()){
-            System.out.println("CYCLE");
+            if(getCycleNodes(endPoint)){
+                return FULL;
+            }
         }
 
         if(length[endPoint]>=0){
@@ -64,7 +68,6 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
 
     }
 
-    //Os valores só mudam quando há ciclo
     private boolean updateLengths() {
         boolean changes = false;
         for(int i = 0; i < numDecisions; i++){
@@ -72,7 +75,7 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
                 double newLen = length[edges[i][0]] + edges[i][2];
                 if(newLen>length[edges[i][1]]){
                     length[edges[i][1]] = newLen;
-                    via[edges[i][1]] = edges[i][0];
+                    via.set(edges[i][0], edges[i][1]);
                     changes = true;
                 }
             }
@@ -80,16 +83,50 @@ public class AwesomeWarriorGameClass implements AwesomeWarriorGame {
 
         return changes;
     }
+
+    private boolean getCycleNodes(int endPoint){
+        int[] inDegree = new int[numChallenges];
+        boolean changes =true;
+
+        for (Integer integer : via) {
+            if (integer != -1) inDegree[integer]++;
+        }
+
+        //algorithm that isolates the cycle
+        while(changes){
+            changes = false;
+            for(int i = 0; i < numChallenges; i++){
+                if(inDegree[i] == 0 && via.get(i) != -1){
+                    int u = via.set(i, -1);
+                    inDegree[u]--;
+                    changes = true;
+                }
+            }
+
+        }
+
+        //list with node identified as a cycle
+        //preferably do this in the previous cycle and eliminate this for loop
+        List<Integer> aux = new ArrayList<>();
+        for(int i = 0; i < via.size(); i++){
+            if(via.get(i) > 0){
+                aux.add(i);
+            }
+        }
+
+        //procura pelo grafo de x nós até chegar a um endpoint
+        //create a seperate reachesNode() function
+        for(int i = 0; i < numDecisions; i++){
+            for(int u = 0; u< aux.size(); u++){
+                if(edges[i][0] == aux.get(u) && !aux.contains(edges[i][1])){
+                    aux.add(edges[i][1]);
+                }
+                if(aux.get(u) == endPoint){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }
-/*
-*
-*5 6
-0 Gets 100 3
-0 Pays 100 1
-1 Gets 1 2
-2 Gets 1 1
-2 Gets 1 4
-3 Pays 150 4
-0 4 100
-*
-* */
